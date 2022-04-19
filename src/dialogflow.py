@@ -188,9 +188,9 @@ class Dialogflow:
 
         return operation.result()
 
-    def detect_intent(self, query):
+    def detect_intent(self, query, contexts):
         query_params = {
-            "contexts": []
+            "contexts": contexts
         }
         query_input = {
             "text": {
