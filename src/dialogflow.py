@@ -37,6 +37,15 @@ class Intent:
         return count > 0
 
     @property
+    def input_context_names(self):
+        context_names = []
+
+        for context in self._intent_obj.input_context_names:
+            context_names.append(context.split("/")[-1])
+        
+        return context_names
+
+    @property
     def intent_obj(self):
         return self._intent_obj
 
@@ -102,10 +111,14 @@ class Dialogflow:
         self._clients = {
             "agents": dialogflow.AgentsClient(),
             "intents": dialogflow.IntentsClient(),
-            "sessions": dialogflow.SessionsClient()
+            "sessions": dialogflow.SessionsClient(),
+            "contexts": dialogflow.ContextsClient()
         }
 
         self._intents = {"name": {}, "display_name": {}}
+
+        self._session_id = ""
+        self._session_path = ""
 
     @property
     def project_id(self):
@@ -128,8 +141,17 @@ class Dialogflow:
         return self._clients.get("sessions", None)
 
     @property
+    def contexts_client(self):
+        return self._clients.get("contexts", None)
+
+    @property
     def intents(self):
         return self._intents
+
+    def create_session(self, contexts=[]):
+        self._session_id = uuid4().hex
+        self._session_path = self.sessions_client.session_path(self.project_id, self._session_id)
+        self.create_contexts_by_name(self._session_path, contexts)
 
     def configure(self):
 
@@ -188,7 +210,12 @@ class Dialogflow:
 
         return operation.result()
 
-    def detect_intent(self, query, contexts):
+    def detect_intent(self, query, context_names):
+        parsed_session_path = self.sessions_client.parse_session_path(self._session_path)
+        contexts = []
+        for context_name in context_names:
+            contexts.append({"name": self.contexts_client.context_path(project=parsed_session_path["project"], session=parsed_session_path["session"], context=context_name), "lifespan_count": 1})
+        
         query_params = {
             "contexts": contexts
         }
@@ -200,12 +227,68 @@ class Dialogflow:
         }
 
         request = {
-            "session": self.sessions_client.session_path(self.project_id, uuid4().hex),
+            "session": self._session_path,
             "query_params": query_params,
             "query_input": query_input
         }
 
         return self.sessions_client.detect_intent(request=request)
+
+    def list_contexts(self):
+        request = {
+            "parent": self._session_path,
+        }
+
+        return self.contexts_client.list_contexts(request=request)
+
+    def create_context(self, parent, context):
+        request = {
+            "parent": parent,
+            "context": { "name": context }
+        }
+
+        return self.contexts_client.create_context(request=request)
+
+    def create_contexts(self, parent, contexts):
+        for context in contexts:
+            try:
+                request = {
+                    "parent": parent,
+                    "context": { "name": context }
+                }
+
+                response = self.contexts_client.create_context(request=request)
+            except Exception as e:
+                pass
+
+    def create_context_by_name(self, session_path, name):
+        parsed_session_path = self.sessions_client.parse_session_path(session_path)
+        context = self.contexts_client.context_path(project=parsed_session_path["project"], session=parsed_session_path["session"], context=name)
+        return self.create_context(session_path, context)
+
+    def create_contexts_by_name(self, session_path, names):
+        for name in names:
+            response = self.create_context_by_name(session_path, name)
+
+    def get_context(self, name):
+        request = {
+            "name": name
+        }
+
+        return self.contexts_client.get_context(request=request)
+
+    def get_contexts(self, names):
+        contexts = []
+        for name in names:
+            try:
+                request = {
+                    "name": name
+                }
+
+                contexts.append(self.contexts_client.get_context(request=request))
+            except Exception as e:
+                pass
+        return contexts
 
     def display_intents(self):
 
@@ -282,8 +365,33 @@ if __name__ == "__main__":
     config = {"project_id": args.project_id, "credential": args.credential}
 
     df = Dialogflow(config)
-
-    # df.get_intents()
+    df.get_intents()
     # df.display_intents()
-    response = df.detect_intent("I want to talk about books")
+
+    query = "sounds great"
+    
+    intent_name = "system-generic-topic-transition-yes"
+    intent = df._intents["display_name"][intent_name]
+    contexts = intent.input_context_names
+
+    df.create_session(contexts)
+
+    print()
+    print("*" * 80)
+    print(f"Session ID: {df._session_id}")
+    print("*" * 80)
+ 
+    # print("*" * 80)
+    # print("LIST CONTEXTS")
+    # print("*" * 80)
+    # for response in df.list_contexts():
+    #     print(response)
+    
+    print()
+
+    print("*" * 80)
+    print("DETECT INTENT")
+    print("*" * 80)
+
+    response = df.detect_intent(query, contexts)
     print(response)
