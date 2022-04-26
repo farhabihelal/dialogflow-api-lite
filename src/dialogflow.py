@@ -22,6 +22,21 @@ class Intent:
             result.append(full_phrase)
         return result
 
+    @training_phrases.setter
+    def training_phrases(self, phrases: list):
+        training_phrases = []
+
+        for phrase in phrases:
+            parts = [{
+                "text": phrase
+            }]
+            training_phrases.append({
+                "type_": "EXAMPLE",
+                "parts": parts
+            })
+
+        self.intent_obj.training_phrases = training_phrases
+
     @property
     def messages(self):
         result = []
