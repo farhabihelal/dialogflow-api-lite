@@ -129,7 +129,16 @@ class EntityClient:
             "entity_type": entity_type,
         }
 
-        response = self._client.create_entity_type(request=request)
+        return self._client.create_entity_type(request=request)
+
+    def update(self, entity_type):
+
+        request = {
+            "parent": self.parent,
+            "entity_type": entity_type,
+        }
+
+        return self._client.update_entity_type(request=request)
 
     def delete(self):
         pass
