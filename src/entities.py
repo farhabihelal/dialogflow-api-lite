@@ -134,7 +134,6 @@ class EntityClient:
     def update(self, entity_type):
 
         request = {
-            "parent": self.parent,
             "entity_type": entity_type,
         }
 
