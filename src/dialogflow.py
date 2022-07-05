@@ -226,7 +226,7 @@ class Dialogflow:
     def delete_intent(self, intent):
         request = {"intent": intent, "intent_view": 1}
 
-        return self.intents_client.update_intent(request)
+        return self.intents_client.delete_intent(request)
 
     def batch_delete_intents(self, intents):
         parent = self.agents_client.agent_path(self.project_id)
