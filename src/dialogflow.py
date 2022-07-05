@@ -27,13 +27,8 @@ class Intent:
         training_phrases = []
 
         for phrase in phrases:
-            parts = [{
-                "text": phrase
-            }]
-            training_phrases.append({
-                "type_": "EXAMPLE",
-                "parts": parts
-            })
+            parts = [{"text": phrase}]
+            training_phrases.append({"type_": "EXAMPLE", "parts": parts})
 
         self.intent_obj.training_phrases = training_phrases
 
@@ -228,6 +223,23 @@ class Dialogflow:
 
         return operation.result()
 
+    def delete_intent(self, intent):
+        request = {"intent": intent, "intent_view": 1}
+
+        return self.intents_client.update_intent(request)
+
+    def batch_delete_intents(self, intents):
+        parent = self.agents_client.agent_path(self.project_id)
+        request = {
+            "parent": parent,
+            "intent_batch_inline": {"intents": intents},
+            "intent_view": 1,
+        }
+
+        operation = self.intents_client.batch_delete_intents(request=request)
+
+        return operation.result()
+
     def detect_intent(self, query, context_names):
         parsed_session_path = self.sessions_client.parse_session_path(
             self._session_path
@@ -384,9 +396,9 @@ if __name__ == "__main__":
     df.get_intents()
     # df.display_intents()
 
-    query = "sounds great"
+    query = "i love to travel"
 
-    intent_name = "system-generic-topic-transition-yes"
+    intent_name = "travel-during-summer"
     intent = df._intents["display_name"][intent_name]
     contexts = intent.input_context_names
 
