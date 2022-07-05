@@ -223,8 +223,8 @@ class Dialogflow:
 
         return operation.result()
 
-    def delete_intent(self, intent):
-        request = {"intent": intent, "intent_view": 1}
+    def delete_intent(self, intent_name):
+        request = {"name": intent_name}
 
         return self.intents_client.delete_intent(request)
 
@@ -232,8 +232,7 @@ class Dialogflow:
         parent = self.agents_client.agent_path(self.project_id)
         request = {
             "parent": parent,
-            "intent_batch_inline": {"intents": intents},
-            "intent_view": 1,
+            "intents": intents,
         }
 
         operation = self.intents_client.batch_delete_intents(request=request)
