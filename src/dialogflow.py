@@ -57,6 +57,18 @@ class Intent:
         return context_names
 
     @property
+    def parameters(self):
+        """
+        Returns key, value pair of parameters.
+        """
+        params = {}
+
+        for p in self._intent_obj.parameters:
+            params[p.display_name] = p.value
+
+        return params
+
+    @property
     def intent_obj(self):
         return self._intent_obj
 
@@ -400,6 +412,7 @@ if __name__ == "__main__":
     intent_name = "travel-during-summer"
     intent = df._intents["display_name"][intent_name]
     contexts = intent.input_context_names
+    params = intent.parameters
 
     df.create_session(contexts)
 
