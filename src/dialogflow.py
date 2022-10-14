@@ -4,11 +4,15 @@ from uuid import uuid4
 
 import google.cloud.dialogflow_v2 as dialogflow
 
+from google.cloud.dialogflow_v2.types.intent import Intent as DfIntent
+from proto.marshal.collections.maps import MapComposite
+
+from protobuf_helpers import protobuf_to_dict
+
 
 class Intent:
     def __init__(self, intent_obj) -> None:
         self._intent_obj = intent_obj
-
         self._parent = None
         self._children = []
 
@@ -38,6 +42,48 @@ class Intent:
         for message in self._intent_obj.messages:
             result.append(message.text.text)
         return result
+
+    @property
+    def text_messages(self):
+        result = []
+        for message in self._intent_obj.messages:
+            if message.text:
+                result.append(message.text.text)
+        return result
+
+    @property
+    def custom_payload(self):
+        payload = {}
+        for message in self._intent_obj.messages:
+            if message.payload:
+                payload = message.payload
+
+        return self.deserialize_custom_payload(payload)
+
+    @custom_payload.setter
+    def custom_payload(self, payload: dict):
+        payload = self.serialize_custom_payload(payload)
+        for message in self._intent_obj.messages:
+            if message.payload != None:
+                message.payload = payload
+                return
+
+        self._intent_obj.messages.append(DfIntent.Message(payload=payload))
+
+    @property
+    def rich_responses(self):
+        responses = []
+        if self.custom_payload.get("responses"):
+            value = self.custom_payload["responses"]
+            for i, container in enumerate(value):
+                texts = []
+                for j, text in enumerate(container):
+                    sentences = []
+                    for sentence_metadata in text:
+                        sentences.append(dict(sentence_metadata))
+                    texts.append(sentences)
+                responses.append(texts)
+        return responses
 
     @property
     def has_messages(self):
@@ -120,6 +166,19 @@ class Intent:
             ret_val += "=" * 80
             ret_val += "\n"
             ret_val += "\n"
+
+    def serialize_custom_payload(self, payload: dict) -> dict:
+        # Convert unsupported types to supported types
+        for key, value in payload.items():
+            if isinstance(value, set):  # Convert sets to lists
+                payload[key] = list(value)
+            elif isinstance(value, tuple):
+                payload[key] = list(value)
+
+        return payload
+
+    def deserialize_custom_payload(self, payload) -> dict:
+        return protobuf_to_dict(payload)
 
 
 class Dialogflow:
@@ -210,11 +269,26 @@ class Dialogflow:
 
         return intents
 
+    def create_intent(self, intent):
+
+        parent = self.agents_client.agent_path(self.project_id)
+
+        request = {
+            "parent": parent,
+            "intent": intent,
+            "intent_view": 1,
+        }
+
+        return self.intents_client.create_intent(request)
+
     def update_intent(self, intent):
         intent.root_followup_intent_name = ""
         intent.followup_intent_info = ""
 
-        request = {"intent": intent, "intent_view": 1}
+        request = {
+            "intent": intent,
+            "intent_view": 1,
+        }
 
         return self.intents_client.update_intent(request)
 
